@@ -11,6 +11,8 @@ import os
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+import kagglehub
+
 
 # Initialize FastAPI app
 app = FastAPI()
@@ -61,13 +63,18 @@ def weighted_binary_crossentropy(y_true, y_pred):
 
 
 # Load the trained ResNet50 model
-MODEL_PATH = "./model/tb-chest-model/tb_resnet.h5"
+# MODEL_PATH = "./model/tb-chest-model/tb_resnet.h5"
+# Load model from Kaggle Model Hub
+MODEL_PATH = kagglehub.model_download(
+    "khalednabawi/tb-chest-prediction/keras/v1")
+
 
 try:
     if not os.path.exists(MODEL_PATH):
         raise FileNotFoundError(f"Model file not found at {MODEL_PATH}")
 
-    model = load_model(MODEL_PATH, compile=False)
+    model = load_model(os.path.join(MODEL_PATH, 'tb_resnet.h5'), compile=False)
+
     # Compile the model with appropriate parameters
     # model.compile(
     #     optimizer='adam',
