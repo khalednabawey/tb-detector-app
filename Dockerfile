@@ -20,10 +20,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Make port available to the world outside this container
-ENV PORT=8000
+ENV PORT=8080
 
 # Expose the port
-EXPOSE 8000
+EXPOSE 8080
 
 # Run the application
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
