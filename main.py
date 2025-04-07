@@ -69,12 +69,11 @@ try:
 
     model = load_model(MODEL_PATH, compile=False)
     # Compile the model with appropriate parameters
-    model.compile(
-        optimizer='adam',
-        loss=weighted_binary_crossentropy,
-        metrics=['accuracy']
-    )
-    print(f"TensorFlow version: {tf.__version__}")
+    # model.compile(
+    #     optimizer='adam',
+    #     loss=weighted_binary_crossentropy,
+    #     metrics=['accuracy']
+    # )
     print("Model loaded successfully!")
 except Exception as e:
     print(f"Error loading model: {str(e)}")
