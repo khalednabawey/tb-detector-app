@@ -61,7 +61,7 @@ def weighted_binary_crossentropy(y_true, y_pred):
 
 
 # Load the trained ResNet50 model
-MODEL_PATH = "../backend/model/tb-chest-model/tb_resnet.h5"
+MODEL_PATH = "./model/tb-chest-model/tb_resnet.h5"
 
 try:
     if not os.path.exists(MODEL_PATH):
