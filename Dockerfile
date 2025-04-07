@@ -13,6 +13,9 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --upgrade pip
 RUN pip install tensorflow==2.18.0
+RUN apt-get update && apt-get install -y git-lfs
+RUN git lfs install
+RUN git lfs pull
 RUN pip install --no-cache-dir -r requirements.txt
 
 
