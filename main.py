@@ -12,7 +12,11 @@ import kagglehub
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+import logging
 
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Initialize FastAPI app
 app = FastAPI(title="TB Detection API")
@@ -89,8 +93,15 @@ def load_model_from_kaggle():
 
 @app.on_event("startup")
 async def startup_event():
+    """Initialize model on startup"""
     global model
-    model = load_model_from_kaggle()
+    try:
+        logger.info("Starting model initialization...")
+        model = load_model_from_kaggle()
+        logger.info("Model initialized successfully!")
+    except Exception as e:
+        logger.error(f"Error during startup: {str(e)}")
+        raise
 
 # Define class labels
 CLASS_LABELS = {0: "Normal", 1: "Tuberculosis"}
@@ -110,9 +121,13 @@ def preprocess_image(img):
 async def predict(file: UploadFile = File(...)):
     """Receives an image file, preprocesses it, and returns TB classification."""
     try:
+        logger.info(f"Receiving prediction request for file: {file.filename}")
         contents = await file.read()
         img = Image.open(BytesIO(contents)).convert("RGB")  # Ensure RGB format
         img_array = preprocess_image(img)
+
+        if model is None:
+            raise ValueError("Model not initialized")
 
         # Make prediction
         prediction = model.predict(img_array)
@@ -120,6 +135,7 @@ async def predict(file: UploadFile = File(...)):
         predicted_class = int(prediction[0][0] > 0.5)
         confidence = float(prediction[0][0])  # Confidence score
 
+        logger.info(f"Prediction complete: {CLASS_LABELS[predicted_class]}")
         return {
             "success": True,
             "filename": file.filename,
@@ -127,7 +143,19 @@ async def predict(file: UploadFile = File(...)):
             "confidence": confidence
         }
     except Exception as e:
+        logger.error(f"Error during prediction: {str(e)}")
         return {
             "success": False,
             "error": str(e)
         }
+
+
+@app.get("/test")
+async def test():
+    """Test endpoint to verify API is running"""
+    return {
+        "status": "healthy",
+        "model_loaded": model is not None,
+        "tensorflow_version": tf.__version__,
+        "python_path": os.environ.get("PYTHONPATH", "Not set")
+    }
