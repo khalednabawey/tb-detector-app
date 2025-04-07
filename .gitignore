@@ -6,6 +6,5 @@ venv/
 .vercel
 railway.json
 railway.toml
-model/tb-chest-model/tb_resnet.h5
-*.h5
+.\tuberculosis-tb-chest-prediction.ipynb
 

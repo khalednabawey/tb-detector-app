@@ -24,4 +24,4 @@ ENV PORT=7860
 EXPOSE 7860
 
 # Run the application
-CMD uvicorn main:app --host 0.0.0.0 --port $PORT
+CMD uvicorn main:app --host 127.1.1.1 --port $PORT
