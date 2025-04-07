@@ -8,19 +8,19 @@ import numpy as np
 from io import BytesIO
 from PIL import Image
 import os
+import kagglehub
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-import kagglehub
 
 
 # Initialize FastAPI app
-app = FastAPI()
+app = FastAPI(title="TB Detection API")
 
-# Update CORS middleware for production
+# Add middleware and configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Update this with your frontend URL in production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -62,29 +62,35 @@ def weighted_binary_crossentropy(y_true, y_pred):
     return tf.reduce_mean(loss)
 
 
-# Load the trained ResNet50 model
-# MODEL_PATH = "./model/tb-chest-model/tb_resnet.h5"
-# Load model from Kaggle Model Hub
-MODEL_PATH = kagglehub.model_download(
-    "khalednabawi/tb-chest-prediction/keras/v1")
+# Global model variable
+model = None
 
 
-try:
-    if not os.path.exists(MODEL_PATH):
-        raise FileNotFoundError(f"Model file not found at {MODEL_PATH}")
+def load_model_from_kaggle():
+    """Load model from Kaggle Hub with error handling"""
+    global model
+    try:
+        MODEL_PATH = kagglehub.model_download(
+            "khalednabawi/tb-chest-prediction/keras/v1"
+        )
+        if not os.path.exists(MODEL_PATH):
+            raise FileNotFoundError(f"Model file not found at {MODEL_PATH}")
 
-    model = load_model(os.path.join(MODEL_PATH, 'tb_resnet.h5'), compile=False)
+        model = load_model(os.path.join(
+            MODEL_PATH, 'tb_resnet.h5'), compile=False)
+        print("Model loaded successfully!")
+        return model
+    except Exception as e:
+        print(f"Error loading model: {str(e)}")
+        raise
 
-    # Compile the model with appropriate parameters
-    # model.compile(
-    #     optimizer='adam',
-    #     loss=weighted_binary_crossentropy,
-    #     metrics=['accuracy']
-    # )
-    print("Model loaded successfully!")
-except Exception as e:
-    print(f"Error loading model: {str(e)}")
-    raise
+# Initialize model at startup
+
+
+@app.on_event("startup")
+async def startup_event():
+    global model
+    model = load_model_from_kaggle()
 
 # Define class labels
 CLASS_LABELS = {0: "Normal", 1: "Tuberculosis"}
@@ -103,36 +109,25 @@ def preprocess_image(img):
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
     """Receives an image file, preprocesses it, and returns TB classification."""
-    contents = await file.read()
-    img = Image.open(BytesIO(contents)).convert("RGB")  # Ensure RGB format
-    img_array = preprocess_image(img)
+    try:
+        contents = await file.read()
+        img = Image.open(BytesIO(contents)).convert("RGB")  # Ensure RGB format
+        img_array = preprocess_image(img)
 
-    # Make prediction
-    prediction = model.predict(img_array)
-    # Convert sigmoid output to 0 or 1
-    predicted_class = int(prediction[0][0] > 0.5)
-    confidence = float(prediction[0][0])  # Confidence score
+        # Make prediction
+        prediction = model.predict(img_array)
+        # Convert sigmoid output to 0 or 1
+        predicted_class = int(prediction[0][0] > 0.5)
+        confidence = float(prediction[0][0])  # Confidence score
 
-    return {
-        "filename": file.filename,
-        "prediction": CLASS_LABELS[predicted_class],
-        "confidence": confidence
-    }
-
-# Mount the React build directory
-# app.mount("/", StaticFiles(directory="../tb-detector-frontend/build",
-#           html=True), name="frontend")
-
-# # Serve index.html for client-side routing
-
-
-# @app.get("/{full_path:path}")
-# async def serve_frontend(full_path: str):
-#     if not "." in full_path:
-#         return FileResponse("../tb-detector-frontend/build/index.html")
-#     return FileResponse(f"../tb-detector-frontend/build/{full_path}")
-
-# Run the app
-if __name__ == "__main__":
-    port = int(os.getenv("PORT", 7860))
-    uvicorn.run(app, host="127.1.1.1", port=port, reload=False)
+        return {
+            "success": True,
+            "filename": file.filename,
+            "prediction": CLASS_LABELS[predicted_class],
+            "confidence": confidence
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
